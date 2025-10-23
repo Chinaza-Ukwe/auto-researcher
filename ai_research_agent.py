@@ -1,9 +1,13 @@
 import streamlit as st
 import requests
+import os
 
 # 🔐 API Keys
-SEARCH1_API_KEY = "C80C72AC-FB4C-45F7-9C3B-1C1F94E51DFB"
-TEXTCORTEX_KEY = "gAAAAABoWHZhgckidemYJeJxWETgfB4zU8dJ_f7P5bu-mPQEhXqLcf3pVFPivL2-Mf1pyfBKMH3-M_vcVmxtSvovQDjxFFyOuhgwqZ3ynnwIu9RNIjzSQCakLl9ClyuGBag50CYg-OQfMK4q48kxq56tJuLsPpj-BXPQeRcfaiQFRe3mBaHHObE="
+SEARCH1_API_KEY = os.getenv("SEARCH1_API_KEY")
+TEXTCORTEX_KEY = os.getenv("TEXTCORTEX_KEY")
+if not SEARCH1_API_KEY or not TEXTCORTEX_KEY:
+    st.error("⚠️ Missing API keys. Please set them in Streamlit Secrets.")
+    st.stop()
 
 # ⚙️ Streamlit Page Config
 st.set_page_config(page_title="Auto Researcher", layout="centered")
@@ -11,12 +15,9 @@ st.title("🔍 Auto Researcher")
 st.markdown('<p style="text-align:center; font-size:26px;">What would you like to know?</p>', unsafe_allow_html=True)
 
 try:
-    # 📥 User Input
     query = st.text_input("", placeholder="Type your question here…")
 
-    # 🔎 Search and Summarize
     if st.button("Research 🔎") and query:
-        # Step 1: Search the Web
         with st.spinner("🔍 Searching the internet..."):
             try:
                 search_resp = requests.post(
@@ -32,7 +33,6 @@ try:
         results = search_resp.json().get("results", [])
         snippets = []
 
-        # Step 2: Display Results
         if not results:
             st.warning("⚠️ No results found.")
         else:
@@ -46,7 +46,6 @@ try:
                 st.write(snippet)
                 snippets.append(snippet)
 
-            # Step 3: Summarize the Combined Snippets
             combined_text = " ".join(snippets).strip()
 
             if not combined_text:
@@ -62,18 +61,19 @@ try:
                             },
                             json={
                                 "text": combined_text,
-                                "length": "medium",  # can also be "short" or "long"
+                                "length": "medium",
                                 "language": "en"
                             }
                         )
                         summary_resp.raise_for_status()
-                        summary = summary_resp.json().get("summary", "")
+                        data = summary_resp.json()
+                        summary = data.get("data", [{}])[0].get("text", "")
                     except Exception as e:
                         st.error(f"❌ Summarization failed: {e}")
                         st.stop()
 
                 st.subheader("📝 Summary")
                 st.write(summary or "No summary returned.")
-                
+
 except Exception as e:
     st.error(f"An unexpected error occurred: {e}")
